@@ -1,0 +1,63 @@
+import { useRouter } from 'next/router';
+import { useAuth } from '../../../context/AuthContext';
+import { useEffect, useState } from 'react';
+import { db } from '../../../lib/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
+import LoadingSpinner from '../../../components/LoadingSpinner';
+import { Line } from 'react-chartjs-2'; // For performance chart
+
+export default function BotDetailsPage() {
+    const router = useRouter();
+    const { id } = router.query; // Get bot ID from URL
+    const { user, loading: authLoading } = useAuth();
+    const [bot, setBot] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (!authLoading && !user) {
+            router.push('/login');
+        }
+    }, [user, authLoading, router]);
+
+    useEffect(() => {
+        if (user && id) {
+            setLoading(true);
+            const unsub = onSnapshot(doc(db, `users/${user.uid}/bots`, id), (doc) => {
+                if (doc.exists()) {
+                    setBot({ id: doc.id, ...doc.data() });
+                } else {
+                    // Handle bot not found, maybe show an error message
+                    setBot(null);
+                }
+                setLoading(false);
+            });
+            return () => unsub();
+        }
+    }, [user, id]);
+
+    if (authLoading || loading) {
+        return <div className="min-h-screen flex items-center justify-center" > <LoadingSpinner /></div >;
+    }
+
+    if (!bot) {
+        return (
+            <main className= "max-w-7xl mx-auto py-10 sm:px-6 lg:px-8 text-center" >
+            <h1 className="text-2xl font-bold" > Bot Not Found </h1>
+                < p className = "mt-2 text-gray-600" > The requested bot could not be found.</p>
+                    < Link href = "/autotrader" >
+                        <a className="mt-4 inline-block text-blue-600 hover:underline" >
+                        & larr; Back to Auto - Trader Dashboard
+            </a>
+            </Link>
+            </main>
+        );
+    }
+
+    return (
+        <main className= "max-w-7xl mx-auto py-10 sm:px-6 lg:px-8" >
+        {/* JSX to display bot details: name, strategy, performance charts, and trade log */ }
+        < h1 className = "text-3xl font-bold" > { bot.name } </h1>
+    {/* ... more detailed UI ... */ }
+    </main>
+    );
+}
